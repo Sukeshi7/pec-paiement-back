@@ -1,0 +1,27 @@
+{
+	"name": "pec-paiement",
+	"version": "1.0.0",
+	"description": "",
+	"type": "module",
+	"main": "index.js",
+	"scripts": {
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
+		"lint:dev": "pnpm dlx @eslint/config-inspector --config eslint.config.mjs"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.8.1",
+	"devDependencies": {
+		"@eslint-community/eslint-plugin-eslint-comments": "^4.5.0",
+		"@eslint/js": "^9.28.0",
+		"@stylistic/eslint-plugin": "^4.4.1",
+		"eslint": "^9.28.0",
+		"eslint-plugin-import-x": "^4.15.1",
+		"eslint-plugin-jsdoc": "^50.7.1",
+		"eslint-plugin-regexp": "^2.8.0",
+		"eslint-plugin-unicorn": "^59.0.1",
+		"globals": "^16.2.0"
+	}
+}
