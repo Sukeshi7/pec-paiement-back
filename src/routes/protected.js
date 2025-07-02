@@ -1,0 +1,13 @@
+const express = require('express');
+const authenticateToken = require('../middleware/auth');
+
+const router = express.Router();
+
+router.get('/dashboard', authenticateToken, (req, res) => {
+  res.json({
+    message: 'Accès autorisé à la dashboard',
+    user: req.user,
+  });
+});
+
+module.exports = router;

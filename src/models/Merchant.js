@@ -1,0 +1,61 @@
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../db/sequelize');
+const crypto = require('crypto');
+
+const Merchant = sequelize.define('Merchant', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+  },
+  companyName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  Kbis:{
+    type:DataTypes.STRING,
+    allowNull: false,
+  },
+  contactEmail: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate:{
+        isEmail: true,
+    }
+  },
+  redirectUrlSuccess: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  redirectUrlCancel: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  currency: {
+    type: DataTypes.STRING(3),
+    allowNull: false,
+  },
+  appId: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+  },
+  appSecret: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+}, {
+  tableName: 'merchants',
+  timestamps: true,
+});
+
+Merchant.generateCredentials = () => ({
+  appId: crypto.randomBytes(16).toString('hex'),
+  appSecret: crypto.randomBytes(32).toString('hex'),
+});
+
+module.exports = Merchant;
