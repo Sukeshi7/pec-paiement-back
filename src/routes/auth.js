@@ -17,6 +17,7 @@ router.post('/token', async (req, res) => {
     });
 
     if (!merchant) {
+      console.log(merchant);
       return res.status(401).json({ error: 'Identifiants invalides ou compte inactif.' });
     }
 
