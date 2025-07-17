@@ -12,16 +12,16 @@ const Merchant = sequelize.define('Merchant', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  Kbis:{
-    type:DataTypes.STRING,
+  Kbis: {
+    type: DataTypes.STRING,
     allowNull: false,
   },
   contactEmail: {
     type: DataTypes.STRING,
     allowNull: false,
-    validate:{
-        isEmail: true,
-    }
+    validate: {
+      isEmail: true,
+    },
   },
   redirectUrlSuccess: {
     type: DataTypes.STRING,

@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../db/sequelize').sequelize;
-const Merchant = require('./Merchant');
+const { sequelize } = require('../db/sequelize');
 
 const Transaction = sequelize.define('Transaction', {
   amount: {
@@ -26,12 +25,10 @@ const Transaction = sequelize.define('Transaction', {
   redirectCancelUrl: {
     type: DataTypes.STRING,
     allowNull: false,
-  }
-});
-
-Transaction.belongsTo(Merchant, {
-  foreignKey: 'merchantId',
-  onDelete: 'CASCADE',
+  },
+}, {
+  tableName: 'transactions',
+  timestamps: true,
 });
 
 module.exports = Transaction;

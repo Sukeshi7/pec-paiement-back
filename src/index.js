@@ -1,10 +1,13 @@
 require('dotenv').config();
 require('./models/Admin');
 const express = require('express');
+require('./models/Associations');
 const Merchant = require('./models/Merchant');
 const Transaction = require('./models/Transaction');
 const { connectPostgres, syncDb } = require('./db/sequelize');
 const connectMongo = require('./db/mongo');
+const cors = require('cors');
+
 
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
@@ -17,6 +20,10 @@ const adminDashboardRoutes = require('./routes/adminDashboard');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/admin', adminDashboardRoutes);
