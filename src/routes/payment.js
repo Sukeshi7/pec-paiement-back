@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
+const Operation = require('../models/Operation');
+
 
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
@@ -10,22 +12,7 @@ router.get('/:id', async (req, res) => {
     return res.status(404).send('Transaction introuvable');
   }
 
-  res.send(`
-    <html>
-      <head><title>Paiement</title></head>
-      <body style="font-family: sans-serif; text-align: center; margin-top: 50px">
-        <h1>Paiement de ${transaction.amount} ${transaction.currency}</h1>
-        <p>Transaction ID : ${transaction.id}</p>
-        <form method="POST" action="/payment/${transaction.id}/confirm">
-          <button type="submit">✅ Confirmer le paiement</button>
-        </form>
-        <br>
-        <form method="POST" action="/payment/${transaction.id}/cancel">
-          <button type="submit">❌ Annuler le paiement</button>
-        </form>
-      </body>
-    </html>
-  `);
+ res.json({ transaction });
 });
 
 router.post('/:id/confirm', async (req, res) => {
@@ -36,8 +23,15 @@ router.post('/:id/confirm', async (req, res) => {
     return res.status(404).send('Transaction introuvable');
   }
 
-  transaction.status = 'processing';
+  transaction.status = 'confirmed';
   await transaction.save();
+
+  await Operation.create({
+  type: 'capture',
+  amount: transaction.amount,
+  transactionId: transaction.id,
+  status: 'done',
+});
   res.redirect(transaction.redirectSuccessUrl);
 });
 

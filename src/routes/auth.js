@@ -4,7 +4,7 @@ const Merchant = require('../models/Merchant');
 
 const router = express.Router();
 
-router.post('/token', async (req, res) => {
+router.post('/login', async (req, res) => {
   const { appId, appSecret } = req.body;
 
   if (!appId || !appSecret) {
@@ -25,7 +25,7 @@ router.post('/token', async (req, res) => {
       {
         merchantId: merchant.id,
         companyName: merchant.companyName,
-        email: merchant.email
+        email: merchant.contactEmail
       },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }

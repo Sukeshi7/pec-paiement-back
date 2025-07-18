@@ -1,10 +1,14 @@
-const express = require('express');
-const validator = require('validator');
-const Merchant = require('../models/Merchant');
+const express = require("express");
+const validator = require("validator");
+const Merchant = require("../models/Merchant");
+const crypto = require("crypto");
+const sendActivationEmail = require("../utils/sendActivationEmail");
+const sendCredentialsEmail = require("../utils/sendCredentialsEmail");
+const authenticateToken  = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const {
     companyName,
     contactEmail,
@@ -13,33 +17,53 @@ router.post('/', async (req, res) => {
     contactPhone,
     redirectSuccessUrl,
     redirectCancelUrl,
-    currency
+    currency,
   } = req.body;
 
-  if (!companyName || !contactEmail || !Kbis || !contactName || !contactPhone || !redirectSuccessUrl || !redirectCancelUrl || !currency) {
-    return res.status(400).json({ error: 'Tous les champs sont requis.' });
+  if (
+    !companyName ||
+    !contactEmail ||
+    !Kbis ||
+    !contactName ||
+    !contactPhone ||
+    !redirectSuccessUrl ||
+    !redirectCancelUrl ||
+    !currency
+  ) {
+    return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
   if (!validator.isEmail(contactEmail)) {
-    return res.status(400).json({ error: 'Email invalide.' });
+    return res.status(400).json({ error: "Email invalide." });
   }
 
-  if (!validator.isMobilePhone(contactPhone, 'fr-FR')) {
-    return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
+  if (!validator.isMobilePhone(contactPhone, "fr-FR")) {
+    return res.status(400).json({ error: "Numéro de téléphone invalide." });
   }
 
-  if (!validator.isURL(redirectSuccessUrl) || !validator.isURL(redirectCancelUrl)) {
-    return res.status(400).json({ error: 'URL de redirection invalide.' });
+  if (
+    !validator.isURL(redirectSuccessUrl) ||
+    !validator.isURL(redirectCancelUrl)
+  ) {
+    return res.status(400).json({ error: "URL de redirection invalide." });
   }
 
-  const supportedCurrencies = ['EUR', 'USD', 'GBP'];
+  const supportedCurrencies = ["EUR", "USD"];
   if (!supportedCurrencies.includes(currency)) {
-    return res.status(400).json({ error: `Devise non supportée. Choisissez parmi : ${supportedCurrencies.join(', ')}` });
+    return res.status(400).json({
+      error: `Devise non supportée. Choisissez parmi : ${supportedCurrencies.join(
+        ", "
+      )}`,
+    });
   }
 
   const credentials = Merchant.generateCredentials();
 
   try {
+    const activationToken = crypto.randomBytes(32).toString("hex");
+    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+    const activationLink = `${baseUrl}/merchants/activate/${activationToken}`;
+
     const newMerchant = await Merchant.create({
       companyName,
       Kbis,
@@ -51,46 +75,52 @@ router.post('/', async (req, res) => {
       currency,
       appId: credentials.appId,
       appSecret: credentials.appSecret,
-      isActive: true,
+      activationToken,
+      isActive: false,
     });
-
+    await sendActivationEmail(contactEmail, activationLink);
     res.status(201).json({
-      message: 'Marchand créé avec succès',
+      message:
+        "Marchand créé avec succès. Veuillez vérifier votre email pour activer votre compte.",
       merchant: {
         id: newMerchant.id,
         companyName: newMerchant.companyName,
         contactEmail: newMerchant.contactEmail,
         appId: newMerchant.appId,
-        appSecret: newMerchant.appSecret,
-        isActive: newMerchant.isActive
-      }
+        isActive: newMerchant.isActive,
+      },
     });
   } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res
+        .status(409)
+        .json({ error: "Cet email est déjà utilisé par un autre marchand." });
+    }
+    res.status(500).json({ error: "Erreur serveur", details: err.message });
   }
 });
 
-const verifyToken = require('../middleware/verifyToken');
+const verifyToken = require("../middleware/verifyToken");
 
-router.get('/me', verifyToken, async (req, res) => {
+router.get("/me", verifyToken, async (req, res) => {
   try {
     const merchant = await Merchant.findByPk(req.merchant.merchantId, {
-      attributes: { exclude: ['appSecret'] },
+      attributes: { exclude: ["appSecret"] },
     });
 
     if (!merchant) {
-      return res.status(404).json({ error: 'Marchand introuvable' });
+      return res.status(404).json({ error: "Marchand introuvable" });
     }
 
     res.json({ merchant });
   } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+    res.status(500).json({ error: "Erreur serveur", details: err.message });
   }
 });
 
-const authMiddleware = require('../middleware/auth');
+const authMiddleware = require("../middleware/auth");
 
-router.post('/regenerate-credentials', authMiddleware, async (req, res) => {
+router.post("/regenerate-credentials", authMiddleware, async (req, res) => {
   const merchantId = req.user.merchantId;
 
   try {
@@ -98,7 +128,7 @@ router.post('/regenerate-credentials', authMiddleware, async (req, res) => {
 
     if (!merchant) {
       console.log(merchant);
-      return res.status(404).json({ error: 'Marchand introuvable.' });
+      return res.status(404).json({ error: "Marchand introuvable." });
     }
 
     const newSecret = Merchant.generateCredentials().appSecret;
@@ -107,14 +137,60 @@ router.post('/regenerate-credentials', authMiddleware, async (req, res) => {
     await merchant.save();
 
     res.json({
-      message: 'Nouveau APP_SECRET généré avec succès.',
-      appSecret: newSecret
+      message: "Nouveau APP_SECRET généré avec succès.",
+      appSecret: newSecret,
     });
-
   } catch (error) {
-    res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    res.status(500).json({ error: "Erreur serveur", details: error.message });
   }
 });
 
+router.get("/activate/:token", async (req, res) => {
+  const { token } = req.params;
+
+  try {
+    const merchant = await Merchant.findOne({
+      where: { activationToken: token },
+    });
+
+    if (!merchant) {
+      return res.status(400).send("Lien d’activation invalide ou expiré.");
+    }
+
+    merchant.isActive = true;
+    merchant.activationToken = null;
+    await merchant.save();
+    
+    await sendCredentialsEmail(
+      merchant.contactEmail,
+      merchant.appId,
+      merchant.appSecret
+    );
+
+    res.redirect(
+      `${process.env.FRONT_URL}/activation-success?message=activated`
+    );
+  } catch (err) {
+    res
+      .status(500)
+      .send("Une erreur est survenue lors de l’activation du compte.");
+  }
+});
+router.get('/me/transactions', authenticateToken, async (req, res) => {
+  try {
+    const merchant = req.user;
+
+    const transactions = await Transaction.findAll({
+      where: { merchantId: merchant.merchantId },
+      include: [Operation],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({ transactions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors du chargement des transactions' });
+  }
+});
 
 module.exports = router;

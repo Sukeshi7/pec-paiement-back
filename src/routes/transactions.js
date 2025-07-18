@@ -1,24 +1,27 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const Transaction  = require('../models/Transaction');
+const Operation = require('../models/Operation');
 const authenticateToken  = require('../middleware/auth');
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const merchant = req.user;
 
-    const { amount, currency, redirectSuccessUrl, redirectCancelUrl } = req.body;
+    const { amount, currency, redirectSuccessUrl, redirectCancelUrl, callbackUrl } = req.body;
 
     const transaction = await Transaction.create({
       amount,
       currency,
-      merchantId: merchant.id,
+      merchantId: merchant.merchantId,
       redirectSuccessUrl,
       redirectCancelUrl,
+      callbackUrl, 
       status: 'pending',
     });
 
-    const paymentUrl = `http://localhost:3000/payment/${transaction.id}`;
+    const paymentUrl = `http://localhost:5173/payment/${transaction.id}`;
     transaction.paymentUrl = paymentUrl;
     await transaction.save();
 
@@ -32,5 +35,48 @@ router.post('/', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la création de la transaction' });
   }
 });
+
+router.post('/notify/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const transaction = await Transaction.findByPk(id);
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction introuvable' });
+    }
+
+    transaction.status = 'success';
+    await transaction.save();
+
+    if (transaction.callbackUrl) {
+      try {
+        await axios.post(transaction.callbackUrl, {
+          transactionId: transaction.id,
+          status: transaction.status,
+          amount: transaction.amount,
+          currency: transaction.currency,
+        });
+
+        console.log('Webhook envoyé au marchand');
+      } catch (err) {
+        console.error('Erreur webhook marchand :', err.message);
+      }
+    }
+
+    res.json({ message: 'Paiement confirmé et webhook envoyé si défini.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la notification' });
+  }
+});
+router.get('/merchant', authenticateToken, async (req, res) => {
+  const transactions = await Transaction.findAll({
+    where: { merchantId: req.user.merchantId },
+    include: [Operation],
+    order: [['createdAt', 'DESC']],
+  })
+  res.json({ transactions })
+})
 
 module.exports = router;

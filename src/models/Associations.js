@@ -1,5 +1,6 @@
 const Merchant = require('./Merchant');
 const Transaction = require('./Transaction');
+const Operation = require('./Operation');
 
 Merchant.hasMany(Transaction, {
   foreignKey: 'merchantId',
@@ -10,4 +11,7 @@ Transaction.belongsTo(Merchant, {
   foreignKey: 'merchantId',
 });
 
-module.exports = { Merchant, Transaction };
+Transaction.hasMany(Operation, { foreignKey: 'transactionId' });
+Operation.belongsTo(Transaction, { foreignKey: 'transactionId' });
+
+module.exports = { Merchant, Transaction, Operation };

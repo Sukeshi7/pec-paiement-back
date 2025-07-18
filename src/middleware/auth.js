@@ -1,26 +1,39 @@
-const jwt = require('jsonwebtoken');
-const Merchant = require('../models/Merchant');
+const jwt = require("jsonwebtoken");
+const Merchant = require("../models/Merchant");
 
 const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
+  const authHeader = req.headers["authorization"];
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token manquant ou invalide' });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Token manquant ou invalide" });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.split(" ")[1];
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const merchant = await Merchant.findOne({ where: { appId: decoded.appId } });
-    console.log('ehe', merchant);
+    console.log("Token décodé :", decoded);
+    const merchant = await Merchant.findOne({
+      where: { id: decoded.merchantId },
+    });
+
     if (!merchant) {
-      return res.status(403).json({ error: 'Marchand introuvable' });
+      return res.status(403).json({ error: "Marchand introuvable" });
     }
 
-    req.user = merchant;
+    if (!merchant.isActive) {
+      return res
+        .status(403)
+        .json({
+          error:
+            "Compte non activé. Veuillez activer votre compte via l’email reçu.",
+        });
+    }
+
+    req.user = { merchantId: merchant.id };
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Token invalide ou expiré' });
+    return res.status(403).json({ error: "Token invalide ou expiré" });
   }
 };
 
