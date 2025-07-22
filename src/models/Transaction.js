@@ -36,12 +36,29 @@ const Transaction = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+
+    customerName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    customerEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    customerAddress: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    items: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    }
   },
   {
     tableName: "transactions",
     timestamps: true,
   }
 );
-
 
 module.exports = Transaction;

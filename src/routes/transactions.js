@@ -9,7 +9,15 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const merchant = req.user;
 
-    const { amount, currency, redirectSuccessUrl, redirectCancelUrl, callbackUrl } = req.body;
+    const {
+      amount,
+      currency,
+      redirectSuccessUrl,
+      redirectCancelUrl,
+      callbackUrl,
+      customer,       
+      metadata         
+    } = req.body;
 
     const transaction = await Transaction.create({
       amount,
@@ -17,8 +25,14 @@ router.post('/', authenticateToken, async (req, res) => {
       merchantId: merchant.merchantId,
       redirectSuccessUrl,
       redirectCancelUrl,
-      callbackUrl, 
-      status: 'pending',
+      callbackUrl,
+      status: 'created',
+      customerName: customer?.name || null,
+      customerEmail: customer?.email || null,
+      customerAddress: customer?.address || null,
+
+
+      items: metadata?.items || null
     });
 
     const paymentUrl = `http://localhost:5173/payment/${transaction.id}`;
@@ -30,6 +44,7 @@ router.post('/', authenticateToken, async (req, res) => {
       transactionId: transaction.id,
       paymentUrl,
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur lors de la création de la transaction' });
@@ -78,5 +93,64 @@ router.get('/merchant', authenticateToken, async (req, res) => {
   })
   res.json({ transactions })
 })
+
+router.post('/pay/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params
+  const { card } = req.body 
+
+  try {
+    const transaction = await Transaction.findByPk(id)
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction introuvable' })
+    }
+
+    if (transaction.status !== 'created') {
+      return res.status(400).json({ error: 'Transaction déjà traitée ou invalide' })
+    }
+
+    transaction.status = 'pending'
+    await transaction.save()
+
+    await axios.post('http://localhost:4000/psp/pay', {
+      transactionId: transaction.id,
+      amount: transaction.amount,
+      callbackUrl: 'http://localhost:3000/callback',
+      card 
+    })
+
+    console.log(`[BACKEND] Paiement lancé pour transaction ${transaction.id} (pending)`)
+
+    res.json({ message: 'Paiement lancé via le PSP mock.' })
+  } catch (err) {
+    console.error('[BACKEND] Erreur PSP mock :', err.message)
+    res.status(500).json({ error: 'Erreur lors de l’appel au PSP mock' })
+  }
+})
+
+router.get('/:id', async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const transaction = await Transaction.findByPk(id)
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction introuvable' })
+    }
+
+    res.json({
+      id: transaction.id,
+      status: transaction.status,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      redirectSuccessUrl: transaction.redirectSuccessUrl,
+      redirectCancelUrl: transaction.redirectCancelUrl
+    })
+  } catch (err) {
+    console.error('Erreur lors de la récupération de la transaction :', err.message)
+    res.status(500).json({ error: 'Erreur serveur' })
+  }
+})
+
 
 module.exports = router;

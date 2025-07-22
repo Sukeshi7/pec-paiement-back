@@ -4,7 +4,7 @@ const Merchant = require("../models/Merchant");
 const crypto = require("crypto");
 const sendActivationEmail = require("../utils/sendActivationEmail");
 const sendCredentialsEmail = require("../utils/sendCredentialsEmail");
-const authenticateToken  = require('../middleware/auth');
+const authenticateToken = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -18,6 +18,7 @@ router.post("/", async (req, res) => {
     redirectSuccessUrl,
     redirectCancelUrl,
     currency,
+    shopUrl,
   } = req.body;
 
   if (
@@ -28,7 +29,8 @@ router.post("/", async (req, res) => {
     !contactPhone ||
     !redirectSuccessUrl ||
     !redirectCancelUrl ||
-    !currency
+    !currency ||
+    !shopUrl
   ) {
     return res.status(400).json({ error: "Tous les champs sont requis." });
   }
@@ -46,6 +48,13 @@ router.post("/", async (req, res) => {
     !validator.isURL(redirectCancelUrl)
   ) {
     return res.status(400).json({ error: "URL de redirection invalide." });
+  }
+  if (!validator.isFQDN(shopUrl)) {
+    return res
+      .status(400)
+      .json({
+        error: "shopUrl invalide",
+      });
   }
 
   const supportedCurrencies = ["EUR", "USD"];
@@ -73,6 +82,7 @@ router.post("/", async (req, res) => {
       redirectUrlSuccess: redirectSuccessUrl,
       redirectUrlCancel: redirectCancelUrl,
       currency,
+      shopUrl,
       appId: credentials.appId,
       appSecret: credentials.appSecret,
       activationToken,
@@ -160,7 +170,7 @@ router.get("/activate/:token", async (req, res) => {
     merchant.isActive = true;
     merchant.activationToken = null;
     await merchant.save();
-    
+
     await sendCredentialsEmail(
       merchant.contactEmail,
       merchant.appId,
@@ -176,20 +186,47 @@ router.get("/activate/:token", async (req, res) => {
       .send("Une erreur est survenue lors de l’activation du compte.");
   }
 });
-router.get('/me/transactions', authenticateToken, async (req, res) => {
+router.get("/me/transactions", authenticateToken, async (req, res) => {
   try {
     const merchant = req.user;
 
     const transactions = await Transaction.findAll({
       where: { merchantId: merchant.merchantId },
       include: [Operation],
-      order: [['createdAt', 'DESC']]
+      order: [["createdAt", "DESC"]],
     });
 
     res.json({ transactions });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur lors du chargement des transactions' });
+    res
+      .status(500)
+      .json({ error: "Erreur lors du chargement des transactions" });
+  }
+});
+
+router.get('/', async (req, res) => {
+  const { shopUrl } = req.query;
+
+  if (!shopUrl) {
+    return res.status(400).json({ error: 'Paramètre shopUrl manquant' });
+  }
+
+  try {
+    const merchant = await Merchant.findOne({
+      where: { shopUrl }
+    });
+
+    if (!merchant) {
+      return res.status(404).json({ error: 'Marchand non trouvé pour cette URL.' });
+    }
+
+    res.json({
+      appId: merchant.appId,
+      appSecret: merchant.appSecret
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
 

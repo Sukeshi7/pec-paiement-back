@@ -11,7 +11,7 @@ const { connectPostgres, syncDb } = require('./db/sequelize');
 const connectMongo = require('./db/mongo');
 const cors = require('cors');
 
-
+const pspRoutes = require('./routes/psp');
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
 const merchantRoutes = require('./routes/merchants');
@@ -24,7 +24,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'http://localhost:5173' || 'https://pec-paiement-front-olive-develop.vercel.app',
   credentials: true
 }));
 
@@ -40,6 +40,7 @@ app.use('/merchants', merchantRoutes);
 app.use('/transactions', transactionRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/transactions', operationsRoutes);
+app.use('/', pspRoutes);
 
 app.get('/', (req, res) => {
   res.send('API Payment prête');

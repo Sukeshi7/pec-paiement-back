@@ -34,6 +34,11 @@ const Merchant = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    shopUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
     currency: {
       type: DataTypes.STRING(3),
       allowNull: false,

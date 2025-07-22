@@ -12,7 +12,6 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Token décodé :", decoded);
     const merchant = await Merchant.findOne({
       where: { id: decoded.merchantId },
     });
