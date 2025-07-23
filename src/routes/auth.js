@@ -1,24 +1,31 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const Merchant = require('../models/Merchant');
-
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
-  const { appId, appSecret } = req.body;
-
-  if (!appId || !appSecret) {
-    return res.status(400).json({ error: 'appId et appSecret sont requis.' });
-  }
+  const { email, password, appId, appSecret } = req.body;
 
   try {
-    const merchant = await Merchant.findOne({
-      where: { appId, appSecret, isActive: true }
-    });
+    let merchant = null;
 
-    if (!merchant) {
-      console.log(merchant);
-      return res.status(401).json({ error: 'Identifiants invalides ou compte inactif.' });
+    if (email && password) {
+      merchant = await Merchant.findOne({ where: { contactEmail: email, isActive: true } });
+
+      if (!merchant || !merchant.password || !(await bcrypt.compare(password, merchant.password))) {
+        return res.status(401).json({ error: 'Email ou mot de passe invalide.' });
+      }
+
+    } else if (appId && appSecret) {
+      merchant = await Merchant.findOne({ where: { appId, appSecret, isActive: true } });
+
+      if (!merchant) {
+        return res.status(401).json({ error: 'Identifiants API invalides.' });
+      }
+
+    } else {
+      return res.status(400).json({ error: 'Fournir soit email+password, soit appId+appSecret.' });
     }
 
     const token = jwt.sign(

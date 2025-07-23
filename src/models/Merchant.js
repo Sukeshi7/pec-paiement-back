@@ -26,6 +26,10 @@ const Merchant = sequelize.define(
         isEmail: true,
       },
     },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     redirectUrlSuccess: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -33,11 +37,6 @@ const Merchant = sequelize.define(
     redirectUrlCancel: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    shopUrl: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
     },
     currency: {
       type: DataTypes.STRING(3),

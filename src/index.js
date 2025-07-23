@@ -13,7 +13,6 @@ const cors = require('cors');
 
 const pspRoutes = require('./routes/psp');
 const authRoutes = require('./routes/auth');
-const protectedRoutes = require('./routes/protected');
 const merchantRoutes = require('./routes/merchants');
 const transactionRoutes = require('./routes/transactions');
 const paymentRoutes = require('./routes/payment');
@@ -24,18 +23,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: 'http://localhost:5173' || 'https://pec-paiement-front-olive-develop.vercel.app',
+  origin: 'http://localhost:5173',
   credentials: true
 }));
-
-// app.options('*', cors());
 
 app.use(express.json());
 
 app.use('/admin', adminDashboardRoutes);
 app.use('/admin', adminRoutes);
 app.use('/auth', authRoutes);
-app.use('/api', protectedRoutes);
 app.use('/merchants', merchantRoutes);
 app.use('/transactions', transactionRoutes);
 app.use('/payment', paymentRoutes);
